@@ -1,12 +1,13 @@
 #include <LiquidCrystal.h>
 #include <Servo.h>
+#include <EEPROM.h>
 
 const int dataPin = 13;
 const int clockPin = 9;
 const int latchPin = 10;
 
 volatile bool doUpdate = false;
-volatile int phaseCounter = 0;
+volatile int phaseCounter = 1;
 volatile int timerCounter = 0;
 
 ISR(TIMER2_COMPA_vect){
@@ -36,21 +37,36 @@ class segmentController{
 
   public:
   segmentController(){
-    pinMode(dataPin, OUTPUT);
-    pinMode(clockPin, OUTPUT);
-    pinMode(latchPin, OUTPUT);
+    //pinMode(dataPin, OUTPUT);
+    //pinMode(clockPin, OUTPUT);
+    //pinMode(latchPin, OUTPUT);
+    DDRB |= (1 << DDB5) | (1 << DDB1) | (1 << DDB2);
+  }
+
+  void writeByte(byte value){
+    for(int i = 7; i >= 0; --i){
+      if(value & (1 << i)){
+        PORTB |= (1 << PB5);
+      }
+      else{
+        PORTB &= ~(1 << PB5);
+      }
+
+      PORTB |= (1 << PB1);
+      PORTB &= ~(1 << PB1);
+    }
   }
 
   void writeSingleNumber(int number){
-    digitalWrite(latchPin, LOW);
-    shiftOut(dataPin, clockPin, MSBFIRST, ~numbers[number]);
-    digitalWrite(latchPin, HIGH);
+    PORTB &= ~(1 << PB2);
+    writeByte(~numbers[number]);
+    PORTB |= (1 << PB2);
   }
 
   void clear(){
-    digitalWrite(latchPin, LOW);
-    shiftOut(dataPin, clockPin, MSBFIRST, 0b11111111);
-    digitalWrite(latchPin, HIGH);
+    PORTB &= ~(1 << PB2);
+    writeByte(0b11111111);
+    PORTB |= (1 << PB2);
   }
 };
 
@@ -231,10 +247,50 @@ float readTemperature() {
 segmentController sc;
 LcdController lc;
 ServoController src;
-int temperature = 0;
+int temperature;
 int digits[2];
 
+class EepromController{
+  private:
+  struct SaveData{
+    uint16_t magic;
+    byte version;
+    int temperature;
+  };
+
+  const uint16_t EEPROM_MAGIC = 123;
+  const byte EEPROM_VERSION = 1;
+  const int EEPROM_ADDRESS = 0;
+
+  public:
+  void saveData(){
+    SaveData data;
+
+    data.magic = EEPROM_MAGIC;
+    data.version = EEPROM_VERSION;
+    data.temperature = temperature;
+
+    EEPROM.put(EEPROM_ADDRESS, data);
+  }
+
+  void loadData(){
+    SaveData data;
+    EEPROM.get(EEPROM_ADDRESS, data);
+
+    if (data.magic != EEPROM_MAGIC || data.version != EEPROM_VERSION){
+      temperature = 0;
+      saveData();
+      return;
+    }
+
+    temperature = data.temperature;
+  }
+};
+
+EepromController ec;
+
 void setup() {
+  ec.loadData();
   src.begin();
   Serial.begin(9600);
 
@@ -252,6 +308,7 @@ void setup() {
   interrupts();
 
   //pinMode(7, OUTPUT);
+  //DDRD |= (1 << DDD7);
 }
 
 void loop() {
@@ -266,10 +323,14 @@ void loop() {
         sc.writeSingleNumber(digits[0]);
       }
 
+      ec.saveData();
+
       if(temperature > 40){
         //digitalWrite(7, HIGH);
+        //PORTD |= (1 << PD7);
         //delay(100);
         //digitalWrite(7, LOW);
+        //PORTD &= ~(1 << PD7);
       }
     }
     else if(phaseCounter == 1){
