@@ -17,7 +17,7 @@ This is an Arduino UNO thermometer that has a 7 segment and LCD display. A servo
 
 1 Anode 7 Segment Display
 
-1 Positional Micro Servo
+1 Positional Micro Servo with a fan attached
 
 1 Piezo buzzer
 
