@@ -50,8 +50,3 @@ magic (uint16_t) – to identify valid data belonging to this application. Value
 version (byte) – to identify the saved data format version. Value 1 is used.
 
 temperature (int) – to save the last measured temperature.
-
-These EEPROM fields are processed by methods in the Pet class, stats are verified to be in usable intervals.
-
-
-hunger (int) – hunger stat.
