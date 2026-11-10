@@ -1,4 +1,4 @@
-# Arduino-Fanning-Thermometer
+# Arduino Fanning Thermometer
 
 This is an Arduino UNO thermometer that has a 7 segment and LCD display. A servo hand fan swings according to temperature and a piezo beeps when it gets over 40 degrees.
 
